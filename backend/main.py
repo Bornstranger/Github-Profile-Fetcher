@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 
-# Health Check Route
+# Health Check Route on the root endpoint
 @app.get("/")
 def root():
     return {"message": "GitHub Profile Fetcher API is running successfully 🚀"}
