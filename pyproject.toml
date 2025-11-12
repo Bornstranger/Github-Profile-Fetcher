@@ -7,8 +7,8 @@ license = "MIT"
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "W"]
-ignore = ["E501"]
+lint.select = ["E", "F", "W"]
+lint.ignore = ["E501"]
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]
