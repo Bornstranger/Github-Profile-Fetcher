@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from backend.utils.github_fetcher import fetch_github_user
+
+from .utils.github_fetcher import fetch_github_user
 
 # Create FastAPI app
 app = FastAPI(
