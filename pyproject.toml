@@ -1,0 +1,15 @@
+[tool]
+name = "ruff-lint-project"
+version = "0.1.0"
+description = "A project to demonstrate lint checking using Ruff."
+authors = ["Kunj Bihari <singhkunj007@gmail.com>"]
+license = "MIT"
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
