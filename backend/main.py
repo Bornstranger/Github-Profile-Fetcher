@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from .models.users import Users
 from .utils.github_fetcher import fetch_github_user
 
 # Create FastAPI app
@@ -27,13 +28,9 @@ def root():
 
 
 # Route to fetch GitHub user details
-@app.get("/user/{username}")
-async def get_github_user(username: str):
+@app.post("/users/")
+async def get_github_user(usernames: Users):
     """Fetch a GitHub user's public profile information"""
-    data = await fetch_github_user(username)
-
-    # If GitHub returns an error (like user not found)
-    if "message" in data and data["message"].lower() == "not found":
-        raise HTTPException(status_code=404, detail=f"GitHub user '{username}' not found")
+    data = await fetch_github_user(usernames)
 
     return data
