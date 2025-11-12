@@ -35,6 +35,32 @@ frontend/              # static frontend
 - Docker (if using Docker)
 - Or Python 3.11+ and pip to run locally
 
+## Linting with ruff
+
+This project includes a `pyproject.toml` with `ruff` configuration. Use `ruff` to lint and optionally fix issues.
+
+Install ruff (recommended in the repo virtualenv or globally):
+
+```powershell
+pip install ruff
+```
+
+Run ruff checks from the repository root (it will read `pyproject.toml`):
+
+```powershell
+ruff check .
+```
+
+Run ruff to automatically fix many issues (safe fixes only):
+
+```powershell
+ruff check --fix .
+```
+
+Notes:
+- The `pyproject.toml` in this repo sets a line length and a selection/ignore list for rules. Adjust that file if you want different behavior.
+- If you use an editor integration (VS Code, Neovim, etc.) configure it to use the project's `ruff` settings.
+
 ## Local development (Python)
 
 Recommended: create a virtual environment and run the backend with uvicorn.
