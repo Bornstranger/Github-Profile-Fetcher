@@ -1,5 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+from pathlib import Path
 
 from .utils.github_fetcher import fetch_github_user
 
@@ -37,3 +41,18 @@ async def get_github_user(username: str):
         raise HTTPException(status_code=404, detail=f"GitHub user '{username}' not found")
 
     return data
+
+
+# If a frontend directory exists at repo root, mount it at /static and provide a small UI endpoint
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+@app.get("/ui")
+def ui():
+    """Return the frontend `index.html` when available (convenience for local dev)."""
+    index = FRONTEND_DIR / "index.html"
+    if index.exists():
+        return FileResponse(index)
+    return {"message": "Frontend not found. Place static files in ../frontend."}
