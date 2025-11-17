@@ -1,20 +1,21 @@
 const DEFAULT_API = "http://127.0.0.1:8000";
 
-// Determine API base: if served over HTTP, try to use same host at port 8000; otherwise fallback to DEFAULT_API
+// Determine API base dynamically
 const API_BASE = (() => {
   try {
     if (location.protocol.startsWith("http")) {
-      // if frontend served by a dev server on a different port, keeping port 8000 for backend
       return `${location.protocol}//${location.hostname}:8000`;
     }
   } catch (e) {
-    /* ignore */
+    // fallback
   }
   return DEFAULT_API;
 })();
 
+// Helper to get element by ID
 const $ = (id) => document.getElementById(id);
 
+// Render loading skeleton
 function renderLoading() {
   return `
     <div class="card">
@@ -33,10 +34,12 @@ function renderLoading() {
   `;
 }
 
+// Render error message
 function renderError(msg) {
   return `<div class="empty"><p class="error">${msg}</p></div>`;
 }
 
+// Render GitHub profile
 function renderProfile(data) {
   return `
     <div class="card">
@@ -45,9 +48,9 @@ function renderProfile(data) {
         <h2>${data.name || data.login}</h2>
         <p>${data.bio || "No bio available"}</p>
         <div class="stats">
-          <div class="stat">👥 ${data.followers}</div>
-          <div class="stat">⭐ ${data.public_repos}</div>
-          <div class="stat">📍 ${data.location || "Unknown"}</div>
+          <div class="stat">👥 Followers: ${data.followers}</div>
+          <div class="stat">⭐Repos: ${data.public_repos}</div>
+          <div class="stat">📍Location: ${data.location || "Unknown"}</div>
         </div>
         <a class="button" href="${data.html_url}" target="_blank" rel="noopener">View on GitHub</a>
       </div>
@@ -55,27 +58,34 @@ function renderProfile(data) {
   `;
 }
 
+// Fetch profile from backend and render
 async function fetchAndRender(username) {
   const profileDiv = $("profile");
   profileDiv.innerHTML = renderLoading();
 
   try {
-    const res = await fetch(`${API_BASE}/user/${encodeURIComponent(username)}`);
+    // Correct API path to match FastAPI backend
+    const res = await fetch(`${API_BASE}/api/github/${encodeURIComponent(username)}`);
+
     if (res.status === 404) {
       profileDiv.innerHTML = renderError(`User "${username}" not found`);
       return;
     }
+
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Request failed: ${res.status}`);
     }
+
     const data = await res.json();
     profileDiv.innerHTML = renderProfile(data);
+
   } catch (err) {
     profileDiv.innerHTML = renderError(err.message || "Unexpected error");
   }
 }
 
+// Handle search input
 function onSearch() {
   const username = $("username").value.trim();
   if (!username) {
@@ -85,7 +95,10 @@ function onSearch() {
   fetchAndRender(username);
 }
 
+// Setup event listeners
 document.addEventListener("DOMContentLoaded", () => {
   $("searchBtn").addEventListener("click", onSearch);
-  $("username").addEventListener("keydown", (e) => { if (e.key === "Enter") onSearch(); });
+  $("username").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") onSearch();
+  });
 });

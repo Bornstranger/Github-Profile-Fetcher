@@ -1,58 +1,81 @@
-from fastapi import FastAPI, HTTPException
+# backend/main.py
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
+import redis.asyncio as aioredis
+import logging
+from backend.core.github import fetch_github_profile
 
-from pathlib import Path
+# -----------------------------
+# Logging
+# -----------------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from .utils.github_fetcher import fetch_github_user
+# -----------------------------
+# Redis connection
+# -----------------------------
+# Make sure Redis is running at localhost:6379
+redis_client = aioredis.from_url("redis://localhost:6379/0", decode_responses=True)
 
-# Create FastAPI app
-app = FastAPI(
-    title="GitHub Profile Fetcher API",
-    description="Fetch any GitHub user's public profile details safely via FastAPI backend.",
-    version="1.0.0",
-)
+# -----------------------------
+# FastAPI app
+# -----------------------------
+app = FastAPI(title="GitHub Profile Fetcher")
 
-# Enable CORS (so your frontend can call this API locally)
+# -----------------------------
+# CORS
+# -----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace "*" with your frontend URL (e.g., "http://localhost:3000")
-    allow_credentials=True,
+    allow_origins=["*"],  # Replace "*" with frontend URL in production
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -----------------------------
+# Rate limiter dependency
+# -----------------------------
+async def rate_limiter(request: Request):
+    """
+    Limit 2 requests per minute per IP.
+    """
+    ip = request.client.host
+    key = f"rate_limit:{ip}"
+    
+    # Increment the counter
+    count = await redis_client.incr(key)
+    
+    if count == 1:
+        # First request, set TTL 60s
+        await redis_client.expire(key, 60)
+    
+    if count > 2:
+        # More than 2 requests in current minute
+        raise HTTPException(status_code=429, detail="Wait for a minute before retrying.")
 
-# Health Check Route
+# -----------------------------
+# Routes
+# -----------------------------
 @app.get("/")
-def root():
-    return {"message": "GitHub Profile Fetcher API is running successfully 🚀"}
+async def root():
+    return {"status": "ok", "message": "GitHub Profile Fetcher API"}
 
+@app.get("/api/github/{username}")
+async def get_github_user(
+    username: str,                  # Path parameter
+    request: Request,
+    _: None = Depends(rate_limiter)  # Inject rate limiter
+):
+    profile = await fetch_github_profile(username)
+    if "error" in profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
 
-# Route to fetch GitHub user details
-@app.get("/user/{username}")
-async def get_github_user(username: str):
-    """Fetch a GitHub user's public profile information"""
-    data = await fetch_github_user(username)
-
-    # If GitHub returns an error (like user not found)
-    if "message" in data and data["message"].lower() == "not found":
-        raise HTTPException(status_code=404, detail=f"GitHub user '{username}' not found")
-
-    return data
-
-
-# If a frontend directory exists at repo root, mount it at /static and provide a small UI endpoint
-FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-
-
-@app.get("/ui")
-def ui():
-    """Return the frontend `index.html` when available (convenience for local dev)."""
-    index = FRONTEND_DIR / "index.html"
-    if index.exists():
-        return FileResponse(index)
-    return {"message": "Frontend not found. Place static files in ../frontend."}
+# -----------------------------
+# Optional: shutdown Redis properly
+# -----------------------------
+@app.on_event("shutdown")
+async def shutdown():
+    await redis_client.close()
+    await redis_client.connection_pool.disconnect()
