@@ -75,12 +75,11 @@ python -m venv .venv
 # install dependencies
 pip install -r backend/requirements.txt
 
-# (optional) add a backend/.env file to set GITHUB_TOKEN
-# backend/.env contents (example):
-# GITHUB_TOKEN=ghp_yourtokenhere
+# Run redis on docker for rate limiting
+docker run -p 6379:6379 redis
 
 # run backend (development, autoreload)
-python -m uvicorn backend.main:app --reload
+uvicorn backend.main:app --reload --port 8000
 ```
 
 Notes:
